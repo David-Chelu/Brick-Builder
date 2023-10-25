@@ -10,6 +10,12 @@ int main()
     TGL::tglDisplay
         buffer;
 
+    TGL::tglTexture
+        brick,
+        ground,
+        sky,
+        tree;
+
     uint16_t
         xStart, xStop, xParse,
         yStart, yStop, yParse;
@@ -36,20 +42,28 @@ int main()
 
 
 
-    for (yParse = yStart; yParse < yStop; ++yParse)
-    {
-        buffer(yParse);
+//    for (yParse = yStart; yParse < yStop; ++yParse)
+//    {
+//        buffer(yParse);
+//
+//        for (xParse = xStart; xParse < xStop; ++xParse)
+//        {
+//            buffer[xParse];
+//            buffer = TGL::PixelRGB(255, 0, 0);
+//        }
+//    }
 
-        for (xParse = xStart; xParse < xStop; ++xParse)
-        {
-            buffer[xParse];
-            buffer = TGL::PixelRGB(255, 0, 0);
-        }
-    }
+    brick.Load("Brick.bmp");
+    ground.Load("Ground.bmp");
+    sky.Load("Sky.bmp");
+    tree.Load("Tree.bmp");
 
+//    ZeroMemory(buffer.image(), buffer.bitsPerPixel() * buffer.allocatedWidth() * buffer.allocatedHeight() / 8);
 
-
-    buffer.Display();
+    buffer.Display(brick); Sleep(1000);
+    buffer.Display(ground); Sleep(1000);
+    buffer.Display(sky); Sleep(1000);
+    buffer.Display(tree); Sleep(1000);
 
 
 
