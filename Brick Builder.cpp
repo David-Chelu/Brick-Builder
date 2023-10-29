@@ -203,8 +203,12 @@ int main()
 
     while (1)
     {
+        // Moving Sky
+
         cutSky .xPosition() -= skyOffset;
         skyLoop.xPosition() -= skyOffset;
+
+        // Looping Sky
 
         if (cutSky.xPosition() <= 0)
         {
@@ -215,6 +219,8 @@ int main()
         {
             cutSky.xPosition() = skyLoop.xPosition() + skyLoop.allocatedWidth();
         }
+
+        // Placing Sky
 
         buffer.Display(cutSky);
         buffer.Display(skyLoop);
