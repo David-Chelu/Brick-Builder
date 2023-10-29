@@ -1,6 +1,7 @@
 #include "tgl.h"
 #include <iostream>
 #include <vector>
+#include "Virtual Keys.h"
 
 
 
@@ -51,6 +52,20 @@ void Copy(TGL::tglTexture &destination,
     }
 }
 
+void Fill(TGL::tglTexture &destination,
+          COLORREF color)
+{
+    for (uint16_t yPixel = 0; yPixel < destination.allocatedHeight(); ++yPixel)
+    {
+        destination(yPixel);
+
+        for (uint16_t xPixel = 0; xPixel < destination.allocatedWidth(); ++xPixel)
+        {
+            destination[xPixel] = color;
+        }
+    }
+}
+
 
 
 int main()
@@ -71,7 +86,9 @@ int main()
         cutSky,
         brick[4][4],
         skyLoop,
-        render;
+        render,
+        placeZone,
+        eraseZone;
 
     uint16_t
         xStart, xStop, xParse,
@@ -82,13 +99,20 @@ int main()
         cutHeight,
         skySpeed,
         skyOffset,
-        xLayer, yLayer;
+        xLayer, yLayer,
+        wallOffset,
+        layerOffset,
+        layerStart,
+        brickLocation;
 
     std::vector<std::vector<TGL::tglTexture*>>
         layer;
 
     Mode
         mode = Mode::Pyramid;
+
+    POINT
+        mouse;
 
 
 
@@ -235,7 +259,9 @@ int main()
 
     MSG message;
 
+    wallOffset = render.allocatedWidth() % brick[0][0].allocatedWidth() / 2;
     skySpeed = 1;
+
     width  = brick[0][0].allocatedWidth();
     height = brick[0][0].allocatedHeight();
 
@@ -257,8 +283,17 @@ int main()
         }
     }
 
+    layer[layer.size() / 2][layer[layer.size() / 2].size() / 2] = NULL;
+
+    placeZone = eraseZone = brick[0][0];
+
+    Fill(placeZone, TGL::PixelRGB(0, 255, 0));
+    Fill(eraseZone, TGL::PixelRGB(255, 0, 0));
+
     while (1)
     {
+        Sleep(17);
+
         // Moving Sky
 
         cutSky .xPosition() -= skySpeed;
@@ -301,22 +336,57 @@ int main()
         for (yLayer = 0; yLayer < layer.size(); ++yLayer)
         {
             static uint16_t
-                layerSize;
+                layerSize,
+                xRegion, yRegion;
 
             layerSize = (Mode::Wall == mode ? layer[yLayer].size() : layer[0].size() - yLayer);
+            layerStart = render.allocatedHeight() - (yLayer + 1) * brick[0][0].allocatedHeight();
 
             for (xLayer = 0; xLayer < layerSize; ++xLayer)
             {
+                layerOffset = (Mode::Wall == mode ? yLayer % 2 : yLayer) * brick[0][0].allocatedWidth() / 2;
+                brickLocation = xLayer * brick[0][0].allocatedWidth();
+
+                xRegion = wallOffset + layerOffset + brickLocation;
+                yRegion = layerStart;
+
                 static TGL::tglTexture
                     *target;
 
-                if (target = layer[yLayer][xLayer])
+                target = layer[yLayer][xLayer];
+
+                GetCursorPos(&mouse);
+
+                mouse.x -= window.xPosition();
+                mouse.y -= window.yPosition();
+
+                if (xRegion <= mouse.x && mouse.x < xRegion + brick[0][0].allocatedWidth() &&
+                    yRegion <= mouse.y && mouse.y < yRegion + brick[0][0].allocatedHeight())
                 {
-                    Copy(render, *target,
-                         (Mode::Wall == mode ? yLayer % 2 : yLayer) * target->allocatedWidth() / 2 + render.allocatedWidth() % brick[0][0].allocatedWidth() / 2 + xLayer * target->allocatedWidth(),
-                         render.allocatedHeight() - (yLayer + 1) * target->allocatedHeight(),
-                         0, 0,
-                         target->allocatedWidth(), target->allocatedHeight());
+                    if (target)
+                    {
+                        Copy(render, eraseZone,
+                             xRegion, yRegion,
+                             0, 0,
+                             eraseZone.allocatedWidth(), eraseZone.allocatedHeight());
+                    }
+                    else
+                    {
+                        Copy(render, placeZone,
+                             xRegion, yRegion,
+                             0, 0,
+                             placeZone.allocatedWidth(), placeZone.allocatedHeight());
+                    }
+                }
+                else
+                {
+                    if (target)
+                    {
+                        Copy(render, *target,
+                             xRegion, yRegion,
+                             0, 0,
+                             target->allocatedWidth(), target->allocatedHeight());
+                    }
                 }
             }
         }
@@ -327,6 +397,10 @@ int main()
 
         buffer.Display(render);
 
+
+
+        GetAllKeyStatus();
+
         if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&message);
@@ -334,13 +408,23 @@ int main()
         }
         else
         {
+            if (GetAsyncKeyState('M'))
+            {
+                if (Mode::Pyramid == mode)
+                {
+                    mode = Mode::Wall;
+                }
+                else
+                {
+                    mode = Mode::Pyramid;
+                }
+            }
+
             if (GetAsyncKeyState(VK_ESCAPE))
             {
                 break;
             }
         }
-
-        Sleep(17);
     }
 
 
