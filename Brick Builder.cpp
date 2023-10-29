@@ -1,23 +1,52 @@
 #include "tgl.h"
 #include <iostream>
+#include <vector>
+
+
+
+#define GlueSkies(left, right)\
+{\
+    skyOffset = TGL::Min(int32_t(left.allocatedWidth()) + left.xPosition(), \
+                         int32_t(render.allocatedWidth()));                 \
+                                                                            \
+    Copy(render, left,                                                      \
+         0, 0,                                                              \
+         -left.xPosition(), 0,                                              \
+         skyOffset, left.allocatedHeight());                                \
+                                                                            \
+    Copy(render, right,                                                     \
+         skyOffset, 0,                                                      \
+         0, 0,                                                              \
+         render.allocatedWidth() - skyOffset, right.allocatedHeight());     \
+}
+
+
+
+enum Mode
+{
+    Pyramid,
+    Wall
+};
 
 
 
 void Copy(TGL::tglTexture &destination,
           TGL::tglTexture &source,
-          uint16_t xStart,
-          uint16_t yStart,
+          uint16_t xDestination,
+          uint16_t yDestination,
+          uint16_t xSource,
+          uint16_t ySource,
           uint16_t width,
           uint16_t height)
 {
     for (uint16_t yPixel = 0; yPixel < height; ++yPixel)
     {
-        destination(yPixel);
-        source(yStart + yPixel);
+        destination(yDestination + yPixel);
+        source(ySource + yPixel);
 
         for (uint16_t xPixel = 0; xPixel < width; ++xPixel)
         {
-            destination[xPixel] = source[xStart + xPixel].pixel();
+            destination[xDestination + xPixel] = source[xSource + xPixel].pixel();
         }
     }
 }
@@ -41,7 +70,8 @@ int main()
         dirt,
         cutSky,
         brick[4][4],
-        skyLoop;
+        skyLoop,
+        render;
 
     uint16_t
         xStart, xStop, xParse,
@@ -50,7 +80,15 @@ int main()
         width, height,
         yCutStart,
         cutHeight,
-        skyOffset;
+        skySpeed,
+        skyOffset,
+        xLayer, yLayer;
+
+    std::vector<std::vector<TGL::tglTexture*>>
+        layer;
+
+    Mode
+        mode = Mode::Pyramid;
 
 
 
@@ -131,6 +169,8 @@ int main()
 
             Copy(brick[yParse][xParse],
                  wall,
+                 0,
+                 0,
                  xParse * width,
                  yParse * height,
                  width,
@@ -177,6 +217,8 @@ int main()
 
 
 
+    // Cutting Sky.bmp
+
     cutHeight = horizon;
     yCutStart = (sky.allocatedHeight() - horizon) / 2;
 
@@ -184,29 +226,45 @@ int main()
     cutSky.height() = cutHeight;
     cutSky.AllocateImage();
 
-    Copy(cutSky,
-         sky,
-         0,
-         yCutStart,
-         cutSky.allocatedWidth(),
-         cutHeight);
+    Copy(cutSky, sky,
+         0, 0,
+         0, yCutStart,
+         cutSky.allocatedWidth(), cutHeight);
 
 
 
     MSG message;
 
-    skyOffset = 1;
+    skySpeed = 1;
     width  = brick[0][0].allocatedWidth();
     height = brick[0][0].allocatedHeight();
 
     skyLoop = cutSky;
 
+    render.width()  = buffer.allocatedWidth();
+    render.height() = buffer.allocatedHeight() / 2;
+    render.AllocateImage();
+
+    layer.resize(horizon / brick[0][0].allocatedHeight());
+
+    for (yLayer = 0; yLayer < layer.size(); ++yLayer)
+    {
+        layer[yLayer].resize(buffer.allocatedWidth() / brick[0][0].allocatedWidth() - yLayer % 2);
+
+        for (xLayer = 0; xLayer < layer[yLayer].size(); ++xLayer)
+        {
+            layer[yLayer][xLayer] = &brick[yLayer % (sizeof(brick) / sizeof(brick[0]))][xLayer % (sizeof(brick[0]) / sizeof(brick[0][0]))];
+        }
+    }
+
     while (1)
     {
         // Moving Sky
 
-        cutSky .xPosition() -= skyOffset;
-        skyLoop.xPosition() -= skyOffset;
+        cutSky .xPosition() -= skySpeed;
+        skyLoop.xPosition() -= skySpeed;
+
+
 
         // Looping Sky
 
@@ -220,10 +278,54 @@ int main()
             cutSky.xPosition() = skyLoop.xPosition() + skyLoop.allocatedWidth();
         }
 
+
+
         // Placing Sky
 
-        buffer.Display(cutSky);
-        buffer.Display(skyLoop);
+        int32_t
+            skyOffset;
+
+        if (cutSky.xPosition() < skyLoop.xPosition())
+        {
+            GlueSkies(cutSky, skyLoop);
+        }
+        else
+        {
+            GlueSkies(skyLoop, cutSky);
+        }
+
+
+
+        // Placing Bricks
+
+        for (yLayer = 0; yLayer < layer.size(); ++yLayer)
+        {
+            static uint16_t
+                layerSize;
+
+            layerSize = (Mode::Wall == mode ? layer[yLayer].size() : layer[0].size() - yLayer);
+
+            for (xLayer = 0; xLayer < layerSize; ++xLayer)
+            {
+                static TGL::tglTexture
+                    *target;
+
+                if (target = layer[yLayer][xLayer])
+                {
+                    Copy(render, *target,
+                         (Mode::Wall == mode ? yLayer % 2 : yLayer) * target->allocatedWidth() / 2 + render.allocatedWidth() % brick[0][0].allocatedWidth() / 2 + xLayer * target->allocatedWidth(),
+                         render.allocatedHeight() - (yLayer + 1) * target->allocatedHeight(),
+                         0, 0,
+                         target->allocatedWidth(), target->allocatedHeight());
+                }
+            }
+        }
+
+
+
+        // Displaying Result
+
+        buffer.Display(render);
 
         if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
         {
