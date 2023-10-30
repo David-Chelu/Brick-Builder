@@ -562,7 +562,7 @@ SHORT PressingKey(int targetKey)
     "If the high-order bit is 1, the key is down; otherwise, it is up."
     */
 
-    return HighOrder(GetAsyncKeyState(targetKey));
+    return HighOrder(GetKeyState(targetKey));
 }
 
 void SetupKeyInputHold(INPUT &input, uint8_t key)
@@ -717,6 +717,11 @@ namespace VK
 }
 
 
+
+inline bool Holding(uint8_t key)
+{
+    return VK::pressing[key];
+}
 
 inline bool Tapped(uint8_t key)
 {

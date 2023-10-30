@@ -1,6 +1,7 @@
 #include "tgl.h"
 #include <iostream>
 #include <vector>
+#include <time.h>
 #include "Virtual Keys.h"
 
 
@@ -20,6 +21,12 @@
          0, 0,                                                              \
          render.allocatedWidth() - skyOffset, right.allocatedHeight());     \
 }
+
+#define PlaceBrick()\
+Copy(render, *target,                                      \
+     xRegion, yRegion,                                     \
+     0, 0,                                                 \
+     target->allocatedWidth(), target->allocatedHeight());
 
 
 
@@ -113,6 +120,11 @@ int main()
 
     POINT
         mouse;
+
+    clock_t
+        frameTime,
+        previousTime,
+        currentTime;
 
 
 
@@ -259,9 +271,6 @@ int main()
 
     MSG message;
 
-    wallOffset = render.allocatedWidth() % brick[0][0].allocatedWidth() / 2;
-    skySpeed = 1;
-
     width  = brick[0][0].allocatedWidth();
     height = brick[0][0].allocatedHeight();
 
@@ -279,7 +288,7 @@ int main()
 
         for (xLayer = 0; xLayer < layer[yLayer].size(); ++xLayer)
         {
-            layer[yLayer][xLayer] = &brick[yLayer % (sizeof(brick) / sizeof(brick[0]))][xLayer % (sizeof(brick[0]) / sizeof(brick[0][0]))];
+            layer[yLayer][xLayer] = NULL; // &brick[yLayer % (sizeof(brick) / sizeof(brick[0]))][xLayer % (sizeof(brick[0]) / sizeof(brick[0][0]))];
         }
     }
 
@@ -290,116 +299,17 @@ int main()
     Fill(placeZone, TGL::PixelRGB(0, 255, 0));
     Fill(eraseZone, TGL::PixelRGB(255, 0, 0));
 
+    frameTime = 17;
+    previousTime = clock();
+
+    wallOffset = render.allocatedWidth() % brick[0][0].allocatedWidth() / 2;
+    skySpeed = 1;
+
     while (1)
     {
-        Sleep(17);
+//        Sleep(1);
 
-        // Moving Sky
-
-        cutSky .xPosition() -= skySpeed;
-        skyLoop.xPosition() -= skySpeed;
-
-
-
-        // Looping Sky
-
-        if (cutSky.xPosition() <= 0)
-        {
-            skyLoop.xPosition() = cutSky.xPosition() + cutSky.allocatedWidth();
-        }
-
-        if (skyLoop.xPosition() <= 0)
-        {
-            cutSky.xPosition() = skyLoop.xPosition() + skyLoop.allocatedWidth();
-        }
-
-
-
-        // Placing Sky
-
-        int32_t
-            skyOffset;
-
-        if (cutSky.xPosition() < skyLoop.xPosition())
-        {
-            GlueSkies(cutSky, skyLoop);
-        }
-        else
-        {
-            GlueSkies(skyLoop, cutSky);
-        }
-
-
-
-        // Placing Bricks
-
-        for (yLayer = 0; yLayer < layer.size(); ++yLayer)
-        {
-            static uint16_t
-                layerSize,
-                xRegion, yRegion;
-
-            layerSize = (Mode::Wall == mode ? layer[yLayer].size() : layer[0].size() - yLayer);
-            layerStart = render.allocatedHeight() - (yLayer + 1) * brick[0][0].allocatedHeight();
-
-            for (xLayer = 0; xLayer < layerSize; ++xLayer)
-            {
-                layerOffset = (Mode::Wall == mode ? yLayer % 2 : yLayer) * brick[0][0].allocatedWidth() / 2;
-                brickLocation = xLayer * brick[0][0].allocatedWidth();
-
-                xRegion = wallOffset + layerOffset + brickLocation;
-                yRegion = layerStart;
-
-                static TGL::tglTexture
-                    *target;
-
-                target = layer[yLayer][xLayer];
-
-                GetCursorPos(&mouse);
-
-                mouse.x -= window.xPosition();
-                mouse.y -= window.yPosition();
-
-                if (xRegion <= mouse.x && mouse.x < xRegion + brick[0][0].allocatedWidth() &&
-                    yRegion <= mouse.y && mouse.y < yRegion + brick[0][0].allocatedHeight())
-                {
-                    if (target)
-                    {
-                        Copy(render, eraseZone,
-                             xRegion, yRegion,
-                             0, 0,
-                             eraseZone.allocatedWidth(), eraseZone.allocatedHeight());
-                    }
-                    else
-                    {
-                        Copy(render, placeZone,
-                             xRegion, yRegion,
-                             0, 0,
-                             placeZone.allocatedWidth(), placeZone.allocatedHeight());
-                    }
-                }
-                else
-                {
-                    if (target)
-                    {
-                        Copy(render, *target,
-                             xRegion, yRegion,
-                             0, 0,
-                             target->allocatedWidth(), target->allocatedHeight());
-                    }
-                }
-            }
-        }
-
-
-
-        // Displaying Result
-
-        buffer.Display(render);
-
-
-
-        GetAllKeyStatus();
+        currentTime = clock();
 
         if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
         {
@@ -408,21 +318,153 @@ int main()
         }
         else
         {
-            if (GetAsyncKeyState('M'))
+            if (currentTime - previousTime >= frameTime)
             {
-                if (Mode::Pyramid == mode)
+                previousTime += frameTime;
+                // Moving Sky
+
+                cutSky .xPosition() -= skySpeed;
+                skyLoop.xPosition() -= skySpeed;
+
+
+
+                // Looping Sky
+
+                if (cutSky.xPosition() <= 0)
                 {
-                    mode = Mode::Wall;
+                    skyLoop.xPosition() = cutSky.xPosition() + cutSky.allocatedWidth();
+                }
+
+                if (skyLoop.xPosition() <= 0)
+                {
+                    cutSky.xPosition() = skyLoop.xPosition() + skyLoop.allocatedWidth();
+                }
+
+
+
+                // Placing Sky
+
+                int32_t
+                    skyOffset;
+
+                if (cutSky.xPosition() < skyLoop.xPosition())
+                {
+                    GlueSkies(cutSky, skyLoop);
                 }
                 else
                 {
-                    mode = Mode::Pyramid;
+                    GlueSkies(skyLoop, cutSky);
                 }
-            }
 
-            if (GetAsyncKeyState(VK_ESCAPE))
-            {
-                break;
+
+
+                // Placing Bricks
+
+                for (yLayer = 0; yLayer < layer.size(); ++yLayer)
+                {
+                    static uint16_t
+                        layerSize,
+                        xRegion, yRegion;
+
+                    layerSize = (Mode::Wall == mode ? layer[yLayer].size() : layer[0].size() - yLayer);
+                    layerStart = render.allocatedHeight() - (yLayer + 1) * brick[0][0].allocatedHeight();
+
+                    for (xLayer = 0; xLayer < layerSize; ++xLayer)
+                    {
+                        layerOffset = (Mode::Wall == mode ? yLayer % 2 : yLayer) * brick[0][0].allocatedWidth() / 2;
+                        brickLocation = xLayer * brick[0][0].allocatedWidth();
+
+                        xRegion = wallOffset + layerOffset + brickLocation;
+                        yRegion = layerStart;
+
+                        static TGL::tglTexture
+                            *target;
+
+                        target = layer[yLayer][xLayer];
+
+                        GetCursorPos(&mouse);
+
+                        mouse.x -= window.xPosition();
+                        mouse.y -= window.yPosition();
+
+                        if (xRegion <= mouse.x && mouse.x < xRegion + brick[0][0].allocatedWidth() &&
+                            yRegion <= mouse.y && mouse.y < yRegion + brick[0][0].allocatedHeight())
+                        {
+                            if (target)
+                            {
+                                if (layer.size() - 1 == yLayer ||
+                                    (Mode::Pyramid == mode && !layer[yLayer + 1][TGL::Max(0, int(xLayer) - 1)]              && !layer[yLayer + 1][TGL::Min(int(xLayer), int(layerSize) - 1)]) ||
+                                    (Mode::Wall    == mode && !layer[yLayer + 1][TGL::Max(0, int(xLayer) - 1 + yLayer % 2)] && !layer[yLayer + 1][TGL::Min(int(xLayer) + yLayer % 2, int(layerSize) - 1)]))
+                                {
+                                    Copy(render, eraseZone,
+                                         xRegion, yRegion,
+                                         0, 0,
+                                         eraseZone.allocatedWidth(), eraseZone.allocatedHeight());
+
+                                    if (Holding(VK_RBUTTON))
+                                    {
+                                        layer[yLayer][xLayer] = NULL;
+                                    }
+                                }
+                                else
+                                {
+                                    PlaceBrick();
+                                }
+                            }
+                            else
+                            {
+                                if (0 == yLayer ||
+                                    (Mode::Pyramid == mode &&  layer[yLayer - 1][TGL::Max(0, int(xLayer))]                  && layer[yLayer - 1][TGL::Min(int(xLayer) + 1, int(layerSize) - 1)]) ||
+                                    (Mode::Wall    == mode && (layer[yLayer - 1][TGL::Max(0, int(xLayer) - 1 + yLayer % 2)] || layer[yLayer - 1][TGL::Min(int(xLayer) + yLayer % 2, int(layerSize) - 1)])))
+                                {
+                                    Copy(render, placeZone,
+                                         xRegion, yRegion,
+                                         0, 0,
+                                         placeZone.allocatedWidth(), placeZone.allocatedHeight());
+
+                                    if (Holding(VK_LBUTTON))
+                                    {
+                                            layer[yLayer][xLayer] = &brick[yLayer % (sizeof(brick) / sizeof(brick[0]))][xLayer % (sizeof(brick[0]) / sizeof(brick[0][0]))];
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (target)
+                            {
+                                PlaceBrick();
+                            }
+                        }
+                    }
+                }
+
+
+
+                // Displaying Result
+
+                buffer.Display(render);
+
+
+
+                GetAllKeyStatus();
+
+                if (Tapped('M'))
+                {
+                    if (Mode::Pyramid == mode)
+                    {
+                        mode = Mode::Wall;
+                    }
+                    else
+                    {
+                        mode = Mode::Pyramid;
+                    }
+                }
+
+                if (Tapped(VK_ESCAPE))
+                {
+                    break;
+                }
             }
         }
     }
