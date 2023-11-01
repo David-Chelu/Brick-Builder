@@ -1,0 +1,10 @@
+╔═════════════╦═══════════════════════╗
+║ Key         ║ Function              ║
+╠═════════════╬═══════════════════════╣
+║ Left Click  ║ Place Brick           ║
+║ Right Click ║ Erase Brick           ║
+║ M           ║ Switch Mode           ║
+║ E           ║ Erase All Bricks      ║
+║ F           ║ Fill All Brick Spaces ║
+║ Escape      ║ Exit                  ║
+╚═════════════╩═══════════════════════╝

@@ -1,2 +1,15 @@
-	Alpha 1.0 (2023.10.30 - 22:45)
--First functional version released
+Alpha 1.1 (2023.11.01 - 22:42)
+	Features
+		-Exiting no longer prompts a message box
+		-Added Erase All Bricks
+		-Added Fill All Brick Spaces
+
+	Bugfixes
+		-Fixed a bug where the rightmost bricks could not be erased
+		-Fixed a bug where in Wall mode, bricks could be placed without anything underneath on the rightmost column
+		-Fixed a bug where in Wall mode, bricks couldn't be placed on the rightmost ones
+
+
+
+Alpha 1.0 (2023.10.30 - 22:45)
+	-First functional version released

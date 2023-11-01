@@ -6,6 +6,8 @@
 
 
 
+//#define DEBUG_MODE
+
 #define GlueSkies(left, right)\
 {\
     skyOffset = TGL::Min(int32_t(left.allocatedWidth()) + left.xPosition(), \
@@ -111,6 +113,14 @@ int main()
         layerOffset,
         layerStart,
         brickLocation;
+
+    uint8_t
+        placeKey = VK_LBUTTON,
+        eraseKey = VK_RBUTTON,
+        modeKey = 'M',
+        eraseAllKey = 'E',
+        placeAllKey = 'F',
+        exitKey = VK_ESCAPE;
 
     std::vector<std::vector<TGL::tglTexture*>>
         layer;
@@ -305,6 +315,17 @@ int main()
     wallOffset = render.allocatedWidth() % brick[0][0].allocatedWidth() / 2;
     skySpeed = 1;
 
+#ifdef DEBUG_MODE
+    SetWindowPos(GetConsoleWindow()
+                ,0
+                ,GetSystemMetrics(SM_CXSCREEN) / 2 - 320
+                ,GetSystemMetrics(SM_CYSCREEN) / 2 - 240
+                ,0
+                ,0
+                ,SWP_NOSIZE
+                );
+#endif // DEBUG_MODE
+
     while (1)
     {
 //        Sleep(1);
@@ -364,6 +385,8 @@ int main()
                 {
                     static uint16_t
                         layerSize,
+                        aboveLayerSize,
+                        belowLayerSize,
                         xRegion, yRegion;
 
                     layerSize = (Mode::Wall == mode ? layer[yLayer].size() : layer[0].size() - yLayer);
@@ -392,16 +415,21 @@ int main()
                         {
                             if (target)
                             {
+                                if (layer.size() - 1 != yLayer)
+                                {
+                                    aboveLayerSize = (Mode::Wall == mode ? layer[yLayer + 1].size() : layer[0].size() - yLayer - 1);
+                                }
+
                                 if (layer.size() - 1 == yLayer ||
-                                    (Mode::Pyramid == mode && !layer[yLayer + 1][TGL::Max(0, int(xLayer) - 1)]              && !layer[yLayer + 1][TGL::Min(int(xLayer), int(layerSize) - 1)]) ||
-                                    (Mode::Wall    == mode && !layer[yLayer + 1][TGL::Max(0, int(xLayer) - 1 + yLayer % 2)] && !layer[yLayer + 1][TGL::Min(int(xLayer) + yLayer % 2, int(layerSize) - 1)]))
+                                    (Mode::Pyramid == mode && !layer[yLayer + 1][TGL::Max(0, int(xLayer) - 1)]              && !layer[yLayer + 1][TGL::Min(int(xLayer), int(aboveLayerSize) - 1)]) ||
+                                    (Mode::Wall    == mode && !layer[yLayer + 1][TGL::Max(0, int(xLayer) - 1 + yLayer % 2)] && !layer[yLayer + 1][TGL::Min(int(xLayer) + yLayer % 2, int(aboveLayerSize) - 1)]))
                                 {
                                     Copy(render, eraseZone,
                                          xRegion, yRegion,
                                          0, 0,
                                          eraseZone.allocatedWidth(), eraseZone.allocatedHeight());
 
-                                    if (Holding(VK_RBUTTON))
+                                    if (Holding(eraseKey))
                                     {
                                         layer[yLayer][xLayer] = NULL;
                                     }
@@ -413,16 +441,21 @@ int main()
                             }
                             else
                             {
+                                if (0 != yLayer)
+                                {
+                                    belowLayerSize = (Mode::Wall == mode ? layer[yLayer - 1].size() : layer[0].size() - yLayer + 1);
+                                }
+
                                 if (0 == yLayer ||
-                                    (Mode::Pyramid == mode &&  layer[yLayer - 1][TGL::Max(0, int(xLayer))]                  && layer[yLayer - 1][TGL::Min(int(xLayer) + 1, int(layerSize) - 1)]) ||
-                                    (Mode::Wall    == mode && (layer[yLayer - 1][TGL::Max(0, int(xLayer) - 1 + yLayer % 2)] || layer[yLayer - 1][TGL::Min(int(xLayer) + yLayer % 2, int(layerSize) - 1)])))
+                                    (Mode::Pyramid == mode &&  layer[yLayer - 1][TGL::Max(0, int(xLayer))]                  && layer[yLayer - 1][TGL::Min(int(xLayer) + 1, int(belowLayerSize) - 1)]) ||
+                                    (Mode::Wall    == mode && (layer[yLayer - 1][TGL::Max(0, int(xLayer) - 1 + yLayer % 2)] || layer[yLayer - 1][TGL::Min(int(xLayer) + yLayer % 2, int(belowLayerSize) - 1)])))
                                 {
                                     Copy(render, placeZone,
                                          xRegion, yRegion,
                                          0, 0,
                                          placeZone.allocatedWidth(), placeZone.allocatedHeight());
 
-                                    if (Holding(VK_LBUTTON))
+                                    if (Holding(placeKey))
                                     {
                                             layer[yLayer][xLayer] = &brick[yLayer % (sizeof(brick) / sizeof(brick[0]))][xLayer % (sizeof(brick[0]) / sizeof(brick[0][0]))];
                                     }
@@ -449,7 +482,29 @@ int main()
 
                 GetAllKeyStatus();
 
-                if (Tapped('M'))
+                if (Tapped(eraseAllKey))
+                {
+                    for (auto &line : layer)
+                    {
+                        for (auto &column : line)
+                        {
+                            column = NULL;
+                        }
+                    }
+                }
+
+                if (Tapped(placeAllKey))
+                {
+                    for (auto &line : layer)
+                    {
+                        for (auto &column : line)
+                        {
+                            column = &brick[yLayer % (sizeof(brick) / sizeof(brick[0]))][xLayer % (sizeof(brick[0]) / sizeof(brick[0][0]))];
+                        }
+                    }
+                }
+
+                if (Tapped(modeKey))
                 {
                     if (Mode::Pyramid == mode)
                     {
@@ -461,7 +516,7 @@ int main()
                     }
                 }
 
-                if (Tapped(VK_ESCAPE))
+                if (Tapped(exitKey))
                 {
                     break;
                 }
@@ -471,7 +526,7 @@ int main()
 
 
 
-    MessageBox(NULL, "Close Message Box to Close the Program", "End Point", MB_OK);
+//    MessageBox(NULL, "Close Message Box to Close the Program", "End Point", MB_OK);
 
 
 
