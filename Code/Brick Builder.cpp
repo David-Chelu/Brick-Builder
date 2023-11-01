@@ -169,12 +169,12 @@ int main()
 //        }
 //    }
 
-    wall.Load("Brick.bmp");
-    ground.Load("Ground.bmp");
-    grass.Load("Ground.bmp");
-    dirt.Load("Ground.bmp");
-    sky.Load("Sky.bmp");
-    tree.Load("Tree.bmp");
+    wall.Load("Resources\\Brick.bmp");
+    ground.Load("Resources\\Ground.bmp");
+    grass.Load("Resources\\Ground.bmp");
+    dirt.Load("Resources\\Ground.bmp");
+    sky.Load("Resources\\Sky.bmp");
+    tree.Load("Resources\\Tree.bmp");
 
 //    ZeroMemory(buffer.image(), buffer.bitsPerPixel() * buffer.allocatedWidth() * buffer.allocatedHeight() / 8);
 
